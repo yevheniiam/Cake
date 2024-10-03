@@ -1,127 +1,135 @@
-# Пошук родзинок на торті
+# Пошук місцезнаходжень родзинок на торті
 def find_raisins(cake)
-  raisins = []
-  cake.each_with_index do |row, i|
-    row.chars.each_with_index do |cell, j|
-      raisins << [i, j] if cell == 'o' # Додаємо позицію родзинки
+  raisin_positions = []
+  cake.each_with_index do |row, row_index|
+    row.chars.each_with_index do |cell, col_index|
+      raisin_positions << [row_index, col_index] if cell == 'o' # Додаємо позицію родзинки
     end
   end
-  raisins
+  raisin_positions
 end
 
-# Перевірка, чи є рівно одна родзинка в прямокутнику
-def count_raisins_in_rectangle(cake, x1, y1, x2, y2)
-  count = 0
+# Перевірка, чи є рівно одна родзинка у прямокутнику
+def has_single_raisin(cake, x1, y1, x2, y2)
+  raisin_count = 0
   (x1..x2).each do |i|
     (y1..y2).each do |j|
-      count += 1 if cake[i][j] == 'o' # Рахуємо родзинки
+      raisin_count += 1 if cake[i][j] == 'o' # Підраховуємо родзинки
     end
   end
-  count == 1 # Перевіряємо, чи рівно одна
+  raisin_count == 1 # Перевіряємо, чи рівно одна
 end
 
 # Генерація горизонтальних розрізів
-def horizontal_cuts(cake, raisins)
-  rectangles = []
+def generate_horizontal_slices(cake, raisins)
+  horizontal_pieces = []
   start_row = 0
 
   raisins.each_with_index do |(x, _), index|
     end_row = index == raisins.length - 1 ? cake.length - 1 : x # Останній шматок до кінця
-    rectangles << cake[start_row..end_row]
+    horizontal_pieces << cake[start_row..end_row]
     start_row = end_row + 1
   end
-  rectangles
+  horizontal_pieces
 end
 
 # Генерація вертикальних розрізів
-def vertical_cuts(cake, raisins)
-  columns = cake[0].length
-  pieces = Array.new(columns) { [] }
+def generate_vertical_slices(cake, raisins)
+  column_count = cake[0].length
+  pieces_by_column = Array.new(column_count) { [] }
 
   (0...cake.length).each do |row|
-    (0...columns).each do |col|
-      pieces[col] << cake[row][col] # Додаємо символи по стовпцях
+    (0...column_count).each do |col|
+      pieces_by_column[col] << cake[row][col] # Додаємо символи по стовпцях
     end
   end
 
-  rectangles = []
+  vertical_pieces = []
   start_col = 0
 
   raisins.each_with_index do |(_, y), index|
-    end_col = index == raisins.length - 1 ? columns - 1 : y # Останній шматок до кінця
-    rectangles << pieces[start_col..end_col].map(&:join)
+    end_col = index == raisins.length - 1 ? column_count - 1 : y # Останній шматок до кінця
+    vertical_pieces << pieces_by_column[start_col..end_col].map(&:join)
     start_col = end_col + 1
   end
 
-  rectangles
+  vertical_pieces
 end
 
-# Генерація діагональних розрізів (коригуємо для прямокутних тортів)
-def diagonal_cuts(cake, raisins)
-  diagonal_rectangles = []
-  n = cake.length
-  m = cake[0].length
+# Генерація діагональних розрізів (корекція для прямокутних тортів)
+def generate_diagonal_slices(cake, raisins)
+  diagonal_pieces = []
+  row_count = cake.length
+  col_count = cake[0].length
 
   # Основна діагональ (i == j)
-  (0...n).each do |i|
+  (0...row_count).each do |i|
     diagonal_piece = []
-    (0...[n, m].min).each do |j|
-      diagonal_piece << cake[i + j][j] if (i + j) < n && j < m
+    (0...[row_count, col_count].min).each do |j|
+      diagonal_piece << cake[i + j][j] if (i + j) < row_count && j < col_count
     end
-    diagonal_rectangles << diagonal_piece.join unless diagonal_piece.empty?
+    diagonal_pieces << diagonal_piece.join unless diagonal_piece.empty?
   end
 
-  diagonal_rectangles
+  diagonal_pieces
 end
 
 # Комбіновані розрізи
-def mixed_cuts(cake, raisins)
-  horizontal_solution = horizontal_cuts(cake, raisins)
-  vertical_solution = vertical_cuts(cake, raisins)
-  diagonal_solution = diagonal_cuts(cake, raisins)
+def generate_mixed_slices(cake, raisins)
+  horizontal = generate_horizontal_slices(cake, raisins)
+  vertical = generate_vertical_slices(cake, raisins)
+  diagonal = generate_diagonal_slices(cake, raisins)
 
-  [horizontal_solution, vertical_solution, diagonal_solution]
+  [horizontal, vertical, diagonal]
 end
 
-# Перевірка можливості поділу на шматки з однією родзинкою в кожному
-def is_valid_cut(cake, raisins, solution)
-  solution.each do |piece|
-    # Якщо шматок представлений рядками (наприклад, для горизонтальних або вертикальних розрізів)
-    if piece.is_a?(Array)
-      raisin_count = piece.map { |row| row.count('o') }.sum
-    else
-      raisin_count = piece.count('o') # Для рядків
-    end
+# Перевірка на можливість розрізу з однією родзинкою на кожному шматку і однаковими розмірами
+def valid_slice?(cake, raisins, slices)
+  # Отримуємо довжину першого шматка для порівняння
+  first_piece_size = slices[0].is_a?(Array) ? slices[0].length : slices[0].size
 
-    return false if raisin_count != 1 # Якщо не рівно одна родзинка, розріз невдалий
+  slices.each do |slice|
+    # Якщо шматок представлений рядами (наприклад, для горизонтальних або вертикальних розрізів)
+    raisin_count = if slice.is_a?(Array)
+                     slice.map { |row| row.count('o') }.sum
+                   else
+                     slice.count('o') # Для рядків
+                   end
+
+    # Перевірка на кількість родзинок
+    return false if raisin_count != 1 # Якщо не рівно одна родзинка, розріз недійсний
+
+    # Перевірка на однаковий розмір шматків
+    current_piece_size = slice.is_a?(Array) ? slice.length : slice.size
+    return false if current_piece_size != first_piece_size # Якщо розмір шматка не співпадає
   end
   true
 end
 
 # Основна функція для розрізу торта
-def cut_cake(cake)
+def slice_cake(cake)
   raisins = find_raisins(cake)
 
   return "Неможливо розрізати торт!" if raisins.empty? || raisins.size < 2
 
-  # Генеруємо всі можливі розрізи
-  horizontal_solution = horizontal_cuts(cake, raisins)
-  vertical_solution = vertical_cuts(cake, raisins)
-  diagonal_solution = diagonal_cuts(cake, raisins)
-  mixed_solutions = mixed_cuts(cake, raisins)
+  # Генерація всіх можливих розрізів
+  horizontal_slices = generate_horizontal_slices(cake, raisins)
+  vertical_slices = generate_vertical_slices(cake, raisins)
+  diagonal_slices = generate_diagonal_slices(cake, raisins)
+  mixed_slices = generate_mixed_slices(cake, raisins)
 
-  all_solutions = [horizontal_solution, vertical_solution, diagonal_solution] + mixed_solutions
+  all_slices = [horizontal_slices, vertical_slices, diagonal_slices] + mixed_slices
 
-  # Фільтруємо валідні розрізи
-  valid_solutions = all_solutions.select { |solution| is_valid_cut(cake, raisins, solution) }
+  # Фільтрація валідних розрізів
+  valid_slices = all_slices.select { |slices| valid_slice?(cake, raisins, slices) }
 
-  return "Немає можливих розрізів!" if valid_solutions.empty?
+  return "Немає можливих розрізів!" if valid_slices.empty?
 
-  valid_solutions
+  valid_slices
 end
 
 # Вибір рішення з найбільшою шириною першого шматка
-def find_best_solution(solutions)
+def find_best_slice_solution(solutions)
   best_solution = nil
   max_width = 0
 
@@ -145,16 +153,16 @@ cake = [
   "........"
 ]
 
-rectangles = cut_cake(cake)
-if rectangles.is_a?(String)
-  puts rectangles # Якщо немає можливості розрізати торт
+slices = slice_cake(cake)
+if slices.is_a?(String)
+  puts slices # Якщо немає можливості розрізати торт
 else
-  best_solution = find_best_solution(rectangles)
+  best_solution = find_best_slice_solution(slices)
 
-  puts "Best solution:"
-  best_solution.each_with_index do |rect, index|
-    puts "Piece #{index + 1}:"
-    rect.each { |line| puts line } # Виводимо кожен шматок
+  puts "Найкраще рішення:"
+  best_solution.each_with_index do |slice, index|
+    puts "Шматок #{index + 1}:"
+    slice.each { |line| puts line } # Виводимо кожен шматок
     puts "---"
   end
 end
